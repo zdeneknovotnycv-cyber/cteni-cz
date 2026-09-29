@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<!--
+  Čtení s kamarádem — verze 2.1.0 (2026-09-29)
+  Změny: viz CHANGELOG v kódu níže a okno „O aplikaci“ (ℹ️) přímo v aplikaci.
+-->
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#5b7cfa">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Čtení">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Čtení s kamarádem</title>
+<style>
+  :root { --fs: 56px; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body {
+    font-family: 'Andika', 'Comic Sans MS', 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(160deg, #5b7cfa 0%, #7b4fd1 100%);
+    min-height: 100vh; color: #263238;
+  }
+  .app { max-width: 980px; margin: 0 auto; padding: 8px 10px 20px; display: flex; flex-direction: column; gap: 8px; min-height: 100vh; }
+  button { font-family: inherit; cursor: pointer; }
+
+  header { display: flex; align-items: center; gap: 8px; color: #fff; }
+  .brand { font-weight: 700; font-size: 1.05rem; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hstats { font-size: .9rem; background: rgba(255,255,255,.2); padding: 4px 10px; border-radius: 99px; white-space: nowrap; }
+  .hbtns { display: flex; gap: 4px; }
+  .ib { border: 0; border-radius: 10px; min-width: 36px; height: 36px; padding: 0 8px; font-size: 1rem; background: rgba(255,255,255,.22); color: #fff; font-weight: 700; }
+  .ib:active { background: rgba(255,255,255,.4); }
+
+  .titlebar { display: flex; justify-content: space-between; gap: 8px; color: #fff; font-size: .85rem; opacity: .95; }
+  #bookTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pbar { height: 8px; background: rgba(255,255,255,.3); border-radius: 99px; overflow: hidden; cursor: pointer; }
+  .pbar i { display: block; height: 100%; width: 0; background: #ffd54f; border-radius: 99px; transition: width .4s; }
+
+  .stage { background: #fff; border-radius: 18px; padding: 14px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.22); min-height: 190px; display: flex; flex-direction: column; justify-content: center; }
+  .reader { font-size: var(--fs); line-height: 1.5; text-align: center; user-select: none; }
+  .sent { margin: .08em 0; }
+  .w { display: inline-block; padding: .02em .16em; margin: .04em .02em; border-radius: .22em; transition: background .25s, color .25s; }
+  .w.past { color: #78909c; }
+  .w.fut { color: #90a4ae; }
+  .w.inc { background: #fff6d6; box-shadow: inset 0 0 0 2px #ffd54f; color: #263238; }
+  .w.heard { background: #e1f0ff; box-shadow: inset 0 0 0 2px #64b5f6; }
+  .w.ok { background: #d8f3dc; box-shadow: inset 0 0 0 2px #43a047; }
+  .w.close { background: #ffe8c7; box-shadow: inset 0 0 0 2px #fb8c00; }
+  .w.bad { background: #ffd9d9; box-shadow: inset 0 0 0 2px #e53935; }
+  .w.focus { outline: 3px solid #7b4fd1; outline-offset: 2px; }
+  .syl:nth-child(odd) { color: #c62828; }
+  .syl:nth-child(even) { color: #1565c0; }
+  .syl.err { background: #ffcdd2; border-radius: .18em; text-decoration: underline wavy #e53935; }
+  .syl.hl { background: #ffe082; border-radius: .18em; }
+  .heard-line { text-align: center; color: #607d8b; font-size: .9rem; min-height: 1.3em; margin-top: 6px; font-style: italic; }
+
+  .teacher { display: flex; gap: 10px; align-items: center; }
+  .avatar { font-size: 2.1rem; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; background: #fff; border-radius: 50%; flex: none; box-shadow: 0 3px 10px rgba(0,0,0,.2); }
+  .bubble { flex: 1; background: #fff; border-radius: 16px; padding: 10px 14px; font-size: 1.02rem; min-height: 52px; display: flex; align-items: center; box-shadow: 0 3px 10px rgba(0,0,0,.15); line-height: 1.35; }
+
+  .bar { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: nowrap; }
+  .sb { border: 0; border-radius: 12px; background: rgba(255,255,255,.95); color: #37474f; min-width: 0; flex: 1 1 0; max-width: 74px; height: 46px; padding: 2px 4px; font-size: 1.15rem; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 3px 0 rgba(0,0,0,.15); }
+  .sb small { font-size: .62rem; font-weight: 700; color: #607d8b; }
+  .sb:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.15); }
+  .mic { flex: none; border: 0; width: 84px; height: 84px; border-radius: 50%; background: linear-gradient(145deg, #66bb6a, #2e7d32); color: #fff; font-size: 2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 5px 0 rgba(0,0,0,.2), 0 8px 18px rgba(0,0,0,.25); }
+  .mic small { font-size: .62rem; font-weight: 700; margin-top: -2px; }
+  .mic.listening { background: linear-gradient(145deg, #ef5350, #b71c1c); animation: pulse 1.1s infinite; }
+  .mic.busy { background: linear-gradient(145deg, #42a5f5, #1565c0); }
+  @keyframes pulse { 0%,100% { box-shadow: 0 5px 0 rgba(0,0,0,.2), 0 0 0 0 rgba(239,83,80,.6); } 50% { box-shadow: 0 5px 0 rgba(0,0,0,.2), 0 0 0 16px rgba(239,83,80,0); } }
+  .manual { display: flex; gap: 8px; justify-content: center; }
+  .manual[hidden] { display: none; }
+  .manual button { border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 700; color: #fff; font-size: 1rem; }
+  #mOk { background: #2e7d32; } #mAgain { background: #ef6c00; }
+
+  .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 100; padding: 12px; overflow-y: auto; }
+  .modal.open { display: block; }
+  .sheet { background: #fff; border-radius: 18px; max-width: 640px; margin: 0 auto; padding: 16px 18px 18px; }
+  .sheet h2 { margin: 0 0 10px; font-size: 1.2rem; display: flex; justify-content: space-between; align-items: center; }
+  .sheet h3 { margin: 16px 0 6px; font-size: 1rem; color: #5e35b1; }
+  .x { border: 0; background: #eceff1; border-radius: 10px; width: 34px; height: 34px; font-size: 1rem; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid #eceff1; }
+  .row label { flex: 1; font-size: .95rem; }
+  .row input[type=range] { width: 46%; }
+  .row select, .row input[type=text] { padding: 6px; border-radius: 8px; border: 1px solid #b0bec5; font-family: inherit; max-width: 48%; }
+  .preview { text-align: center; padding: 6px; background: #fff6d6; border-radius: 10px; margin: 6px 0; overflow: hidden; white-space: nowrap; }
+  .btn { border: 0; border-radius: 10px; padding: 9px 14px; font-weight: 700; color: #fff; background: #5e35b1; font-size: .92rem; }
+  .btn.sec { background: #78909c; } .btn.red { background: #c62828; } .btn.grn { background: #2e7d32; } .btn.org { background: #ef6c00; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .book { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #eceff1; }
+  .book .meta { flex: 1; min-width: 0; }
+  .book .t { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .book .s { font-size: .8rem; color: #78909c; }
+  .mini { height: 6px; background: #eceff1; border-radius: 99px; margin-top: 4px; overflow: hidden; }
+  .mini i { display: block; height: 100%; background: #66bb6a; }
+  textarea { width: 100%; min-height: 110px; padding: 10px; border-radius: 10px; border: 1px solid #b0bec5; font-family: inherit; font-size: .95rem; }
+  .sheet input[type=text].full { width: 100%; max-width: 100%; margin-bottom: 6px; }
+  .stat { display: flex; gap: 8px; flex-wrap: wrap; }
+  .stat div { flex: 1; min-width: 90px; background: #f3e5f5; border-radius: 12px; padding: 10px; text-align: center; }
+  .stat b { display: block; font-size: 1.4rem; color: #5e35b1; }
+  .stat span { font-size: .75rem; color: #607d8b; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: #ffe0e0; border-radius: 99px; padding: 4px 10px; font-size: .9rem; }
+  .small { font-size: .82rem; color: #607d8b; line-height: 1.4; }
+  ul.log { margin: 4px 0 0; padding-left: 18px; font-size: .88rem; }
+  .app { min-height: 100dvh; }
+  .stage { flex: 1; }
+  .dock { position: sticky; bottom: 0; z-index: 20; display: flex; flex-direction: column; gap: 8px; margin-top: auto; padding: 14px 0 calc(6px + env(safe-area-inset-bottom)); background: linear-gradient(to top, rgba(112,82,212,.97) 72%, rgba(112,82,212,0)); }
+  .chk { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid #eceff1; }
+  .chk .ic { font-size: 1.3rem; width: 28px; text-align: center; flex: none; }
+  .chk .tx { flex: 1; min-width: 0; }
+  .chk .tx b { display: block; font-size: .98rem; }
+  .chk .tx span { font-size: .85rem; color: #546e7a; line-height: 1.35; display: block; margin-top: 2px; }
+  .chk .tx span.fix { color: #b71c1c; }
+  .meter { height: 12px; background: #eceff1; border-radius: 99px; overflow: hidden; margin-top: 6px; }
+  .meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #66bb6a, #ffca28, #ef5350); transition: width .08s; }
+  .sylbtns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .sylbtns button { border: 0; background: #ede7f6; color: #4527a0; border-radius: 10px; padding: 8px 12px; font-size: 1.05rem; font-weight: 700; }
+  .banner { background: #fff3cd; color: #6d4c00; border-radius: 12px; padding: 8px 12px; font-size: .88rem; display: none; line-height: 1.35; }
+  .banner.show { display: block; }
+  .banner button { border: 0; background: #ef6c00; color: #fff; border-radius: 8px; padding: 4px 10px; font-weight: 700; margin-left: 6px; }
+  #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: #263238; color: #fff; padding: 10px 16px; border-radius: 12px; z-index: 400; font-size: .92rem; opacity: 0; pointer-events: none; transition: opacity .3s; max-width: 90vw; text-align: center; }
+  #toast.show { opacity: .95; }
+  .conf { position: fixed; top: -2rem; font-size: 1.6rem; animation: fall 1.9s ease-in forwards; pointer-events: none; z-index: 300; }
+  @keyframes fall { to { transform: translateY(112vh) rotate(540deg); } }
+  @media (max-width: 520px) { .brand span { display: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">📖 <span>Čtení s kamarádem</span></div>
+    <div class="hstats" id="stars">⭐ 0</div>
+    <div class="hbtns">
+      <button class="ib" id="btnAm" title="Menší text">A−</button>
+      <button class="ib" id="btnAp" title="Větší text">A+</button>
+      <button class="ib" id="btnTest" title="Test mikrofonu a hlasu">🔧</button>
+      <button class="ib" id="btnLib" title="Knihovna">📚</button>
+      <button class="ib" id="btnStats" title="Přehled a těžká slova">📊</button>
+      <button class="ib" id="btnSet" title="Nastavení">⚙️</button>
+    </div>
+  </header>
+  <div class="banner" id="banner"></div>
+  <div class="titlebar"><span id="bookTitle">—</span><span id="progText"></span></div>
+  <div class="pbar" id="pbar" title="Klepnutím přeskočíš na jiné místo"><i id="pfill"></i></div>
+
+  <main class="stage">
+    <div class="reader" id="reader" aria-live="polite"></div>
+    <div class="heard-line" id="heard"></div>
+  </main>
+
+  <div class="dock">
+  <section class="teacher">
+    <div class="avatar" id="avatar">🦉</div>
+    <div class="bubble" id="bubble">Ahoj! Vyber si v knihovně 📚 text a začneme.</div>
+  </section>
+
+  <nav class="bar">
+    <button class="sb" id="btnPrev" title="Předchozí úsek">⏮<small>Zpět</small></button>
+    <button class="sb" id="btnListen" title="Učitel přečte předem">🔊<small>Poslechni</small></button>
+    <button class="mic" id="btnMic"><span id="micIcon">🎤</span><small id="micLbl">Čti</small></button>
+    <button class="sb" id="btnOk" title="Bylo to správně (přebije rozpoznávání)">✔<small>Správně</small></button>
+    <button class="sb" id="btnSkip" title="Přeskočit úsek">⏭<small>Přeskoč</small></button>
+  </nav>
+  <div class="manual" id="manualBar" hidden>
+    <button id="mOk">✅ Přečteno správně</button>
+    <button id="mAgain">🔁 Ještě jednou</button>
+  </div>
+  </div>
+</div>
+
+<!-- Nastavení -->
+<div class="modal" id="mSet"><div class="sheet">
+  <h2>⚙️ Nastavení <button class="x" data-close>✕</button></h2>
+  <div class="row"><label>Velikost textu: <b id="fsVal"></b></label><input type="range" id="s_fs" min="24" max="140" step="2"></div>
+  <div class="preview" id="fsPrev" style="font-size:28px">Máma má mísu.</div>
+  <div class="row"><label>Kolik slov čtu najednou</label>
+    <select id="s_unit" data-num><option value="1">1 slovo</option><option value="2">2 slova</option><option value="3">3 slova</option><option value="5">5 slov</option><option value="0">Celá věta</option></select></div>
+  <div class="row"><label>Kolik vět je na obrazovce</label>
+    <select id="s_sentences" data-num><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></div>
+  <div class="row"><label>Slabiky</label>
+    <select id="s_syl"><option value="always">Vždy barevně</option><option value="error">Jen při chybě</option><option value="never">Nikdy</option></select></div>
+  <div class="row"><label>Přísnost učitele</label>
+    <select id="s_strict"><option value="soft">Mírná</option><option value="normal">Střední</option><option value="strict">Přísná (hlídá i délku samohlásek)</option></select></div>
+  <div class="row"><label>Trpělivost (jak dlouho čekám na další slovo)</label>
+    <select id="s_patience" data-num><option value="1.5">Krátká</option><option value="2.5">Střední</option><option value="4">Dlouhá</option><option value="6">Velmi dlouhá</option></select></div>
+  <div class="row"><label>Rychlost hlasu učitele: <b id="rateVal"></b></label><input type="range" id="s_rate" min="0.5" max="1.2" step="0.05"></div>
+  <div class="row"><label>Hlas</label><select id="s_voiceURI"><option value="">Automaticky (český)</option></select></div>
+  <div class="row"><label>Vlastní výslovnost (např. <b>ok=okk;pi=pí</b>)</label><input type="text" id="s_pron" placeholder="slabika=jak se má říct"></div>
+  <div class="btns"><button class="btn" id="btnTest2">🔧 Test mikrofonu a hlasu</button></div>
+  <div class="row"><label>Dítě je</label><select id="s_gender"><option value="m">Chlapec</option><option value="f">Dívka</option></select></div>
+  <div class="row"><label>Učitel mluví nahlas</label><input type="checkbox" id="s_teacherTalks"></div>
+  <div class="row"><label>Po učiteli automaticky poslouchat</label><input type="checkbox" id="s_autoListen"></div>
+  <div class="row"><label>Po správném přečtení automaticky pokračovat</label><input type="checkbox" id="s_autoNext"></div>
+  <div class="row"><label>Učitel přečte úsek předem</label><input type="checkbox" id="s_modelFirst"></div>
+  <div class="row"><label>Rodič rozhoduje tlačítky (bez mikrofonu)</label><input type="checkbox" id="s_manual"></div>
+  <div class="btns"><button class="btn sec" id="btnAbout">ℹ️ O aplikaci</button><button class="btn red" id="btnResetStats">Smazat statistiky</button></div>
+</div></div>
+
+<!-- Knihovna -->
+<div class="modal" id="mLib"><div class="sheet">
+  <h2>📚 Knihovna <button class="x" data-close>✕</button></h2>
+  <div id="libList"></div>
+  <h3>➕ Nový text nebo kniha</h3>
+  <input type="text" class="full" id="newTitle" placeholder="Název (nepovinné)">
+  <textarea id="newText" placeholder="Vložte text. Pomlčkou můžete ručně oddělit slabiky: ma-ma, ko-č-ka."></textarea>
+  <div class="row"><label>…nebo soubor <b>.txt</b> / <b>.epub</b></label><input type="file" id="newFile" accept=".txt,.epub,text/plain,application/epub+zip"></div>
+  <div class="btns"><button class="btn grn" id="btnAddText">Uložit do knihovny</button></div>
+  <p class="small">PDF zatím neumím čist přímo — převeďte ho na TXT nebo EPUB. Texty se ukládají jen v tomto prohlížeči.</p>
+</div></div>
+
+<!-- Test mikrofonu a hlasu -->
+<div class="modal" id="mTest"><div class="sheet">
+  <h2>🔧 Test mikrofonu a hlasu <button class="x" data-close>✕</button></h2>
+  <p class="small">Projdi shora dolů. Co je červené, tam je problém – pod ním je vysvětlení, co udělat.</p>
+  <div id="testBody"></div>
+</div></div>
+
+<!-- Přehled -->
+<div class="modal" id="mStats"><div class="sheet">
+  <h2>📊 Přehled <button class="x" data-close>✕</button></h2>
+  <div id="statsBody"></div>
+</div></div>
+
+<!-- O aplikaci -->
+<div class="modal" id="mAbout"><div class="sheet">
+  <h2>ℹ️ O aplikaci <button class="x" data-close>✕</button></h2>
+  <div id="aboutBody"></div>
+</div></div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+const APP_VERSION = '2.1.0';
+const CHANGELOG = [
+  { v: '2.1.0', date: '2026-09-29', items: [
+    'Mikrofon: povolení se žádá přímo z klepnutí, robustnější poslech, srozumitelné hlášení chyb; nový panel 🔧 Test (https, rozpoznávání, mikrofon s ukazatelem hlasitosti, zkušební rozpoznání, hlas).',
+    'Učitel už nemluví dřív, než dítě začne číst: po klepnutí na 🎤 se hned poslouchá; při tichu jen napíše nápovědu.',
+    'Angličtina zakázána: učitel mluví jen českým hlasem. Když ho zařízení nemá, učitel jen píše a ukáže, jak hlas doinstalovat.',
+    'Hláskování: vlastní výslovnost slabik (např. ok=okk;pi=pí) a zkouška hláskování v panelu Test.',
+    'Nový obsah: pohádka „Pejsek a kočička vaří“, slabiky (i ok, po, pi), slova 1–3 slabiky, více vět.',
+    'Instalace na plochu telefonu (PWA): manifest, ikony a offline uložení aplikace.'
+  ]},
+  { v: '2.0.0', date: '2026-09-29', items: [
+    'Rozpoznávání řeči: dítě čte nahlas a aplikace poslouchá (Chrome/Edge, potřebuje internet).',
+    'Učitel: hodnotí správnost, popíše chybu (vynechaná/přidaná slabika, jiná slabika, délka samohlásky), předvede slabikování, nechá slovo zopakovat a chválí.',
+    'Čtení po slovech, po několika slovech i po celých větách; celé texty a knihy s ukládáním pozice.',
+    'Knihovna: vlastní text, soubory .txt a .epub, záložka posledního místa.',
+    'Volba velikosti textu (A−/A+ i posuvník), menší tlačítka, počet vět na obrazovce.',
+    'Vylepšené dělení na slabiky (au/ou/eu, slabičné r/l, „ch“).',
+    'Statistiky a automatický seznam těžkých slov k procvičení; hvězdičky za správné čtení napoprvé.',
+    'Režim „rodič rozhoduje“ pro prohlížeče bez rozpoznávání řeči.'
+  ]},
+  { v: '1.0.0', date: '2026-09-28', items: [
+    'První verze: slabikování po jednom slově, čtení hlasem počítače, vložení vlastního seznamu slov.'
+  ]}
+];
+
+// ===== <LOGIC> =====
+const VOW = 'aeiouyáéěíóúůý';
+const isV = c => !!c && VOW.includes(c);
+const SYL_DICT = { jablko: ['jab', 'lko'], jablka: ['jab', 'lka'] };
+const ONSET2 = new Set(['pr','br','tr','dr','kr','gr','fr','hr','vr','cr','pl','bl','kl','gl','fl','vl','mr','ml','př','tř','kř','dř','chr','chl']);
+
+function syllabify(word) {
+  const lw = word.toLowerCase();
+  if (SYL_DICT[lw]) { let o = 0; return SYL_DICT[lw].map(p => { const s = word.substr(o, p.length); o += p.length; return s; }); }
+  const n = lw.length; const nuc = []; let firstV = -1;
+  for (let i = 0; i < n; i++) if (isV(lw[i])) { firstV = i; break; }
+  for (let i = 0; i < n;) {
+    const c = lw[i];
+    if (isV(c)) {
+      if ((c === 'a' || c === 'e' || c === 'o') && lw[i + 1] === 'u') { nuc.push([i, i + 1]); i += 2; continue; }
+      nuc.push([i, i]); i++; continue;
+    }
+    if (c === 'r' || c === 'l') {
+      const p = lw[i - 1], q = lw[i + 1];
+      if (!isV(p) && !isV(q) && (p || q)) {
+        let k = i + 1; while (k < n && !isV(lw[k])) k++;
+        const after = k - (i + 1);
+        if (firstV === -1 || i < firstV || i === n - 1 || after >= 2) nuc.push([i, i]);
+      }
+    }
+    i++;
+  }
+  if (nuc.length <= 1) return [word];
+  const cuts = [];
+  for (let a = 0; a < nuc.length - 1; a++) {
+    const e1 = nuc[a][1], s2 = nuc[a + 1][0];
+    const units = [];
+    for (let k = e1 + 1; k < s2;) {
+      if (lw[k] === 'c' && lw[k + 1] === 'h' && k + 1 < s2) { units.push(k); k += 2; } else { units.push(k); k++; }
+    }
+    if (!units.length) cuts.push(e1 + 1);
+    else if (units.length >= 2) {
+      const last2 = lw.slice(units[units.length - 2], s2);
+      cuts.push(ONSET2.has(last2) ? units[units.length - 2] : units[units.length - 1]);
+    } else cuts.push(units[0]);
+  }
+  const out = []; let prev = 0;
+  for (const c of cuts) { if (c > prev) { out.push(word.slice(prev, c)); prev = c; } }
+  out.push(word.slice(prev));
+  return out;
+}
+
+const ONES = ['nula','jedna','dva','tři','čtyři','pět','šest','sedm','osm','devět','deset','jedenáct','dvanáct','třináct','čtrnáct','patnáct','šestnáct','sedmnáct','osmnáct','devatenáct'];
+const TENS = ['','','dvacet','třicet','čtyřicet','padesát','šedesát','sedmdesát','osmdesát','devadesát'];
+function numCz(n) {
+  if (n < 20) return ONES[n];
+  if (n < 100) { const t = Math.floor(n / 10), o = n % 10; return TENS[t] + (o ? ' ' + ONES[o] : ''); }
+  if (n === 100) return 'sto';
+  return null;
+}
+
+const norm = s => (s || '').toLowerCase().normalize('NFC').replace(/[^\p{L}]/gu, '');
+const lmap = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u', ů: 'u', ý: 'y' };
+const phon = s => s.replace(/[áéíóúůý]/g, c => lmap[c]).replace(/y/g, 'i');
+const lenPat = s => s.replace(/[áéíóúůý]/g, 'L').replace(/[aeěiouy]/g, 's');
+function lev(a, b) {
+  if (a === b) return 0;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+const THRESH = { soft: { ok: 0.75, close: 0.45 }, normal: { ok: 0.9, close: 0.55 }, strict: { ok: 0.97, close: 0.7 } };
+const MINSIM = 0.45;
+
+function classify(exp, heard, strict) {
+  const e = norm(exp), h = norm(heard);
+  if (!e || !h) return { status: 'miss', sim: 0 };
+  if (e === h) return { status: 'ok', sim: 1 };
+  const pe = phon(e), ph = phon(h);
+  if (pe === ph) {
+    const lengthOnly = lenPat(e) !== lenPat(h);
+    return { status: (lengthOnly && strict === 'strict') ? 'close' : 'ok', sim: 1, lengthOnly };
+  }
+  const sim = 1 - lev(pe, ph) / Math.max(pe.length, ph.length);
+  const T = THRESH[strict] || THRESH.normal;
+  let okT = T.ok, clT = T.close;
+  if (pe.length <= 2) { okT = 1.01; clT = strict === 'soft' ? 0.5 : 1.01; }
+  return { status: sim >= okT ? 'ok' : sim >= clT ? 'close' : 'bad', sim };
+}
+
+function prepHeard(text) {
+  return (text || '').replace(/\d+/g, m => { const w = numCz(parseInt(m, 10)); return w ? ' ' + w + ' ' : ' '; })
+    .split(/[\s\-–—]+/).map(norm).filter(Boolean);
+}
+
+function alignOne(E, H, strict) {
+  const n = E.length, m = H.length, NEG = -1e9, EXTRA = 0.03;
+  const dp = Array.from({ length: n + 1 }, () => new Float64Array(m + 1).fill(NEG));
+  const bk = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(null));
+  dp[0][0] = 0;
+  for (let j = 1; j <= m; j++) { dp[0][j] = dp[0][j - 1] - EXTRA; bk[0][j] = ['h']; }
+  for (let i = 1; i <= n; i++) {
+    for (let j = 0; j <= m; j++) {
+      let best = dp[i - 1][j], b = ['e'];
+      if (j > 0) { const v = dp[i][j - 1] - EXTRA; if (v > best) { best = v; b = ['h']; } }
+      for (let k = 1; k <= 4 && k <= j; k++) {
+        const prev = dp[i - 1][j - k]; if (prev <= NEG / 2) continue;
+        const heard = H.slice(j - k, j).join('');
+        const r = classify(E[i - 1], heard, strict);
+        if (r.status === 'miss' || r.sim < MINSIM) continue;
+        const v = prev + (r.sim - 0.3) - 0.02 * (k - 1);
+        if (v > best) { best = v; b = ['m', k, r, heard]; }
+      }
+      dp[i][j] = best; bk[i][j] = b;
+    }
+  }
+  const ops = []; let i = n, j = m;
+  while (i > 0 || j > 0) {
+    const b = bk[i][j];
+    if (i === 0 || b[0] === 'h') { ops.push({ t: 'h', j: j - 1 }); j--; }
+    else if (b[0] === 'e') { ops.push({ t: 'e', i: i - 1 }); i--; }
+    else { ops.push({ t: 'm', i: i - 1, k: b[1], r: b[2], heard: b[3] }); i--; j -= b[1]; }
+  }
+  ops.reverse();
+  const res = new Array(n).fill(null); let extra = 0; let gE = [], gH = [];
+  const flush = () => {
+    const pairs = Math.min(gE.length, gH.length);
+    for (let p = 0; p < pairs; p++) {
+      const r = classify(E[gE[p]], gH[p], strict);
+      res[gE[p]] = { status: 'bad', heard: gH[p], sim: r.sim || 0 };
+    }
+    for (let p = pairs; p < gE.length; p++) res[gE[p]] = { status: 'miss', heard: '', sim: 0 };
+    extra += Math.max(0, gH.length - pairs);
+    gE = []; gH = [];
+  };
+  for (const op of ops) {
+    if (op.t === 'e') gE.push(op.i);
+    else if (op.t === 'h') gH.push(H[op.j]);
+    else { flush(); res[op.i] = { status: op.r.status, sim: op.r.sim, heard: op.heard, lengthOnly: !!op.r.lengthOnly }; }
+  }
+  flush();
+  return { res, extra };
+}
+
+function evaluateChunk(words, segments, strict) {
+  const idx = []; const E = [];
+  words.forEach((w, i) => { if (!w.skip) { idx.push(i); E.push(w.spoken); } });
+  const cands = []; const maxAlts = Math.max(1, ...segments.map(s => s.alts.length));
+  for (let k = 0; k < maxAlts; k++) {
+    const t = segments.map(s => s.alts[k] !== undefined ? s.alts[k] : s.alts[0]).join(' ');
+    if (!cands.includes(t)) cands.push(t);
+  }
+  let best = null;
+  for (const text of cands) {
+    const H = prepHeard(text);
+    const { res, extra } = alignOne(E, H, strict);
+    const score = res.reduce((a, r) => a + (r.status === 'ok' ? 1 : r.status === 'close' ? 0.5 : 0), 0) - 0.02 * extra;
+    if (!best || score > best.score) best = { score, res, text };
+  }
+  const items = words.map(() => ({ status: 'ok', sim: 1, heard: '', skipped: true }));
+  best.res.forEach((r, k) => { items[idx[k]] = r; });
+  return { items, allOk: items.every(it => it.status === 'ok'), heardText: best.text };
+}
+
+// --- čtení textu ---
+const ABBR = new Set(['tzn', 'tj', 'např', 'atd', 'apod', 'resp', 'tzv', 'mj', 'str', 'obr', 'sv', 'p', 'pí', 'ing', 'mgr', 'dr', 'prof', 'popř', 'příp']);
+function endsSentence(tok, next) {
+  if (!/[.!?…]["”“'’»)\]]*$/.test(tok)) return false;
+  if (/^\d+\.$/.test(tok.replace(/^[^\p{N}]+/u, ''))) return false;
+  const base = tok.replace(/[.!?…"”“'’»)\]]+$/, '').toLowerCase().replace(/^[^\p{L}]+/u, '');
+  if (tok.endsWith('.') && ABBR.has(base)) return false;
+  if (next) { const m = next.match(/\p{L}/u); if (m && m[0] === m[0].toLowerCase() && m[0] !== m[0].toUpperCase()) return false; }
+  return true;
+}
+function tokenizeSegment(str) {
+  const raw = str.split(/\s+/).filter(Boolean); const out = []; let pending = '';
+  for (const t of raw) {
+    if (!/[\p{L}\p{N}]/u.test(t)) { if (out.length) out[out.length - 1] += ' ' + t; else pending += t + ' '; continue; }
+    out.push(pending + t); pending = '';
+  }
+  return out;
+}
+function splitSentences(text) {
+  text = text.replace(/\r\n?/g, '\n').replace(/[​﻿­]/g, '').replace(/ /g, ' ');
+  const out = [];
+  for (const p of text.split(/\n\s*\n+/)) {
+    const lines = p.split('\n').map(s => s.trim()).filter(Boolean);
+    if (!lines.length) continue;
+    let segs = lines;
+    if (lines.length >= 2) {
+      const avg = lines.reduce((a, l) => a + l.length, 0) / lines.length;
+      const ends = lines.filter(l => /[.!?…"”“»)]$/.test(l)).length / lines.length;
+      let lowerNext = 0;
+      for (let i = 1; i < lines.length; i++) { const m = lines[i].match(/\p{L}/u); if (m && m[0] === m[0].toLowerCase() && m[0] !== m[0].toUpperCase()) lowerNext++; }
+      const wrapped = (avg >= 40 && ends < 0.6) || (avg >= 25 && lowerNext / (lines.length - 1) >= 0.4);
+      if (wrapped) segs = [lines.join(' ')];
+    }
+    for (const seg of segs) {
+      const toks = tokenizeSegment(seg); let cur = [];
+      for (let i = 0; i < toks.length; i++) { cur.push(toks[i]); if (endsSentence(toks[i], toks[i + 1])) { out.push(cur); cur = []; } }
+      if (cur.length) out.push(cur);
+    }
+  }
+  return out;
+}
+function chunkEnd(tokens, start, unit) {
+  const len = tokens.length;
+  if (unit > 0) return Math.min(len, start + unit);
+  if (len - start <= 12) return len;
+  for (let e = Math.min(len - 1, start + 10); e >= start + 4; e--) if (/[,;:]["”“'»)]*$/.test(tokens[e - 1])) return e;
+  return start + 8;
+}
+function spokenForm(core) {
+  if (/\d/.test(core)) {
+    let bad = false;
+    const s = core.replace(/\d+/g, m => { const w = numCz(parseInt(m, 10)); if (!w) bad = true; return w || ''; });
+    return bad ? '' : s;
+  }
+  return core;
+}
+function mkWord(tok) {
+  const m = tok.match(/^([^\p{L}\p{N}]*)(.*?)([^\p{L}\p{N}]*)$/u);
+  let pre = m[1], core = m[2], post = m[3], manual = null;
+  if (core.includes('-') && /\p{L}-\p{L}/u.test(core)) { manual = core.split('-').filter(Boolean); core = manual.join(''); }
+  const spoken = spokenForm(core);
+  const key = norm(spoken);
+  return { tok, pre, core, post, manual, spoken, key, skip: !key, syl: null };
+}
+const sylCache = new Map();
+function sylOf(w) {
+  if (w.syl) return w.syl;
+  if (w.manual) return (w.syl = w.manual);
+  const k = w.core;
+  if (!sylCache.has(k)) sylCache.set(k, syllabify(k));
+  return (w.syl = sylCache.get(k));
+}
+function numSyl(n) { return n === 1 ? 'jednu slabiku' : n === 2 ? 'dvě slabiky' : n === 3 ? 'tři slabiky' : n === 4 ? 'čtyři slabiky' : n + ' slabik'; }
+
+function diagnose(w, it, gender) {
+  const g = gender === 'f' ? 'a' : '';
+  const syl = sylOf(w); const n = syl.length; const word = w.core;
+  if (it.status === 'miss' || !it.heard) return { msg: `Slovo „${word}“ jsem neslyšel${g}. Poslouchej, jak se čte.`, syl: -1, type: 'miss' };
+  const e = norm(w.spoken), h = norm(it.heard);
+  const sylAt = idx => { let acc = 0; for (let k = 0; k < syl.length; k++) { acc += norm(syl[k]).length; if (idx < acc) return k; } return syl.length - 1; };
+  const firstDiff = (a, b) => { let i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++; return i; };
+  if (phon(e) === phon(h)) {
+    const lp1 = lenPat(e), lp2 = lenPat(h); const k = sylAt(firstDiff(lp1, lp2));
+    return { msg: `Pozor na délku samohlásky ve slabice „${syl[k]}“.`, syl: k, type: 'length' };
+  }
+  if ((it.sim || 0) < 0.5) return { msg: `Přečetl${g} jsi „${it.heard}“, ale tady je napsáno „${word}“.`, syl: -1, type: 'other' };
+  const hs = syllabify(h).length;
+  if (hs < n) return { msg: `Nějakou slabiku jsi vynechal${g}. Slovo „${word}“ má ${numSyl(n)}.`, syl: -1, type: 'short' };
+  if (hs > n) return { msg: `Přidal${g} jsi slabiku navíc. Slovo „${word}“ má ${numSyl(n)}.`, syl: -1, type: 'long' };
+  const k = sylAt(firstDiff(phon(e), phon(h)));
+  return { msg: `Pozor na slabiku „${syl[k]}“.`, syl: k, type: 'sound' };
+}
+
+// --- EPUB / ZIP ---
+async function unzip(buf) {
+  const u8 = new Uint8Array(buf); const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  let eocd = -1;
+  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error('Soubor není platný ZIP/EPUB.');
+  const count = dv.getUint16(eocd + 10, true); let p = dv.getUint32(eocd + 16, true);
+  const entries = {};
+  for (let k = 0; k < count; k++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+    const nlen = dv.getUint16(p + 28, true), elen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true), lho = dv.getUint32(p + 42, true);
+    const name = new TextDecoder().decode(u8.subarray(p + 46, p + 46 + nlen));
+    entries[name] = { method, csize, lho }; p += 46 + nlen + elen + clen;
+  }
+  async function read(name) {
+    const e = entries[name]; if (!e) return null;
+    const ln = dv.getUint16(e.lho + 26, true), le = dv.getUint16(e.lho + 28, true);
+    const start = e.lho + 30 + ln + le; const data = u8.subarray(start, start + e.csize);
+    if (e.method === 0) return data;
+    if (e.method === 8) {
+      const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      return new Uint8Array(await new Response(stream).arrayBuffer());
+    }
+    throw new Error('Nepodporovaná komprese v souboru.');
+  }
+  return { names: Object.keys(entries), read };
+}
+const ENT = { nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", hellip: '…', ndash: '–', mdash: '—', lsquo: '‘', rsquo: '’', ldquo: '“', rdquo: '”', bdquo: '„', laquo: '«', raquo: '»' };
+function htmlToText(html) {
+  return html.replace(/<(script|style|head)\b[\s\S]*?<\/\1>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|h[1-6]|li|tr|blockquote|section)>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (m, e) => {
+      if (e[0] === '#') { const c = e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10); return isNaN(c) ? '' : String.fromCodePoint(c); }
+      return ENT[e.toLowerCase()] !== undefined ? ENT[e.toLowerCase()] : '';
+    })
+    .replace(/[ \t]+/g, ' ').replace(/ ?\n ?/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+function attr(tag, name) { const m = tag.match(new RegExp('\\b' + name + '\\s*=\\s*"([^"]*)"', 'i')) || tag.match(new RegExp('\\b' + name + "\\s*=\\s*'([^']*)'", 'i')); return m ? m[1] : ''; }
+function joinPath(base, rel) {
+  const parts = (base ? base.split('/') : []).concat(decodeURIComponent(rel.split('#')[0]).split('/')); const out = [];
+  for (const s of parts) { if (s === '..') out.pop(); else if (s && s !== '.') out.push(s); }
+  return out.join('/');
+}
+async function epubToText(buf) {
+  const z = await unzip(buf); const dec = new TextDecoder('utf-8');
+  const cont = await z.read('META-INF/container.xml'); if (!cont) throw new Error('V EPUBu chybí container.xml.');
+  const opfPath = attr(dec.decode(cont).match(/<rootfile\b[^>]*>/i)[0], 'full-path');
+  const opf = dec.decode(await z.read(opfPath)); const dir = opfPath.includes('/') ? opfPath.slice(0, opfPath.lastIndexOf('/')) : '';
+  const manifest = {}; (opf.match(/<item\b[^>]*>/gi) || []).forEach(t => { manifest[attr(t, 'id')] = attr(t, 'href'); });
+  const spine = (opf.match(/<itemref\b[^>]*>/gi) || []).map(t => attr(t, 'idref'));
+  const tm = opf.match(/<dc:title[^>]*>([\s\S]*?)<\/dc:title>/i); const title = tm ? htmlToText(tm[1]) : '';
+  const parts = [];
+  for (const id of spine) {
+    if (!manifest[id]) continue;
+    const data = await z.read(joinPath(dir, manifest[id])); if (!data) continue;
+    const t = htmlToText(dec.decode(data)); if (t.length > 20) parts.push(t);
+  }
+  if (!parts.length) throw new Error('V EPUBu jsem nenašel žádný text.');
+  return { title, text: parts.join('\n\n') };
+}
+// ===== </LOGIC> =====
+
+// ===== Úložiště =====
+const $ = id => document.getElementById(id);
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const DEFAULTS = { fs: Math.round(Math.min(56, Math.max(30, window.innerWidth / 10))), unit: 1, sentences: 1, syl: 'always', strict: 'normal', patience: 2.5, rate: 0.85, voiceURI: '', gender: 'm', teacherTalks: true, autoListen: true, autoNext: true, modelFirst: false, manual: false, pron: '', voiceConfirmed: false };
+const settings = Object.assign({}, DEFAULTS, LS.get('cs.settings', {}));
+let stats = LS.get('cs.stats', { words: {}, days: {} });
+const progress = LS.get('cs.progress', {});
+const saveSettings = () => LS.set('cs.settings', settings);
+const saveStats = () => LS.set('cs.stats', stats);
+const saveProgress = () => LS.set('cs.progress', progress);
+const todayKey = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const dayStats = () => stats.days[todayKey()] || (stats.days[todayKey()] = { chunks: 0, first: 0, words: 0, wordsOk: 0, stars: 0 });
+
+const DB = {
+  db: null, failed: false, mem: [],
+  async open() {
+    if (this.db || this.failed) return;
+    try {
+      await new Promise((res, rej) => {
+        const rq = indexedDB.open('cteni-kamarad', 1);
+        rq.onupgradeneeded = () => rq.result.createObjectStore('books', { keyPath: 'id' });
+        rq.onsuccess = () => { this.db = rq.result; res(); };
+        rq.onerror = () => rej(rq.error);
+      });
+    } catch (e) { this.failed = true; }
+  },
+  async all() { await this.open(); if (!this.db) return this.mem.slice(); return new Promise(res => { const rq = this.db.transaction('books').objectStore('books').getAll(); rq.onsuccess = () => res(rq.result || []); rq.onerror = () => res([]); }); },
+  async put(b) { await this.open(); if (!this.db) { this.mem = this.mem.filter(x => x.id !== b.id); this.mem.push(b); return; } return new Promise((res, rej) => { const tx = this.db.transaction('books', 'readwrite'); tx.objectStore('books').put(b); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); },
+  async del(id) { await this.open(); if (!this.db) { this.mem = this.mem.filter(x => x.id !== id); return; } return new Promise(res => { const tx = this.db.transaction('books', 'readwrite'); tx.objectStore('books').delete(id); tx.oncomplete = res; tx.onerror = res; }); }
+};
+
+const BUILTIN = [
+  { id: 'b-slabiky', title: 'Slabiky – procvičování', builtin: true, text:
+`ma me mi mo mu my
+ta te ti to tu ty
+la le li lo lu ly
+pa pe pi po pu py
+ba be bi bo bu by
+da de di do du dy
+ka ke ki ko ku
+na ne ni no nu ny
+sa se si so su sy
+ra re ri ro ru ry
+va ve vi vo vu vy
+ha he hi ho hu
+za ze zi zo zu zy
+ša še ši šo šu
+ča če či čo ču
+ok uk ak ek ik
+má mé mí mó mú
+tá té tí tó tú
+lá lé lí ló lú
+pá pé pí pó pú
+ma-ma ta-ta le-to po-le ko-lo` },
+  { id: 'b-slova1', title: 'Slova – 1 slabika', builtin: true, text:
+`pes
+kos
+dům
+les
+sůl
+zub
+nos
+rak
+mák
+sníh
+strom
+mrak
+vlk
+chléb
+hrad
+most
+pták
+kůň
+lev
+stůl
+sýr
+dort
+mech
+list` },
+  { id: 'b-slova', title: 'Slova – 2 slabiky', builtin: true, text:
+`máma
+táta
+kočka
+ryba
+auto
+kolo
+škola
+okno
+voda
+bota
+lampa
+žába
+mýdlo
+kniha
+slunce
+oko
+ucho
+noha
+ruka
+hlava
+koza
+husa
+kuře
+mléko` },
+  { id: 'b-slova3', title: 'Slova – 3 a více slabik', builtin: true, text:
+`maminka
+tatínek
+babička
+dědeček
+kamarád
+zahrada
+čokoláda
+kobliha
+pohádka
+jahoda
+malina
+autobus
+semafor
+televize
+zmrzlina
+pomeranč
+knihovna
+kolotoč` },
+  { id: 'b-vety', title: 'Krátké věty', builtin: true, text:
+`Máma má mísu.
+Táta má kolo.
+Pes leží na dece.
+Kočka pije mléko.
+Ema mele maso.
+Ota jede na kole.
+Na okně stojí lampa.
+Voda teče z kohoutku.
+Žába skáče do rybníka.
+V lese roste velký strom.
+Dnes svítí sluníčko.
+Já čtu novou knížku.
+Máme doma malého pejska.
+Táta vaří dobrou polévku.
+Máma peče voňavý koláč.
+Babička plete teplý svetr.
+Ryba plave v akváriu.
+Pták sedí na stromě.
+Kluk kope do míče.
+Holka skáče přes švihadlo.
+Na louce kvetou kytky.
+Auto jede po silnici.
+Lenka má červené boty.
+Ježek spí pod listím.` },
+  { id: 'b-vety2', title: 'Delší věty', builtin: true, text:
+`Když prší, zůstaneme doma a budeme si hrát.
+Ráno vstanu, umyju se a nasnídám se.
+Babička nám každý víkend upeče buchty.
+Na zahradě rostou jahody, maliny a rybíz.
+Můj bratr už umí jezdit na kole bez pomocných koleček.
+V zimě padá sníh a děti stavějí sněhuláka.
+O prázdninách pojedeme k moři a budeme se koupat.
+Kočka se ráda hřeje na sluníčku u okna.
+Tatínek nám večer čte pohádku před spaním.
+Ve škole se učíme číst, psát a počítat.
+Pes zaštěkal, protože u plotu uviděl kočku.
+Na obloze svítí hvězdy a měsíc je jako srpek.` },
+  { id: 'b-pejsek', title: 'Pohádka: Pejsek a kočička vaří', builtin: true, text:
+`Pejsek a kočička bydleli spolu v malém domku. Jednou ráno pejsek řekl: „Dnes budeme vařit!“ Kočička zamňoukala: „Hurá, uvaříme polévku!“
+
+Pejsek přinesl ze zahrádky mrkev a brambory. Kočička vzala velký hrnec a nalila do něj vodu. Pejsek mrkev umyl a kočička ji pokrájela. Pak dali všechno do hrnce.
+
+„Musíme chvilku počkat,“ řekla kočička. Hrnec tiše bublal a po celém domku to krásně vonělo. Pejsek se posadil ke stolu a čenichal. Kočička míchala a míchala.
+
+Najednou pejsek zvolal: „Ta polévka je bez soli!“ Kočička se rozběhla ke skříňce. Ale místo soli přinesla cukr. Pejsek ochutnal a zakroutil hlavou. „Fuj, ta je sladká!“
+
+Kočička se zasmála. „To nevadí, uvaříme ji znovu.“ Tentokrát vzala opravdovou sůl. Polévka byla výborná.
+
+Pejsek s kočičkou usedli ke stolu a snědli celý hrnec. Potom si lehli na gauč a spokojeně usnuli.` },
+  { id: 'b-pohadka', title: 'Pohádka: Kočka Mlsalka', builtin: true, text:
+`Kočka Mlsalka bydlí v malém domku u lesa. Každé ráno vstane a protáhne se. Pak jde do zahrady. Tam sedí na lavičce a hřeje se na sluníčku.
+
+Najednou uslyší tiché pípání. Pod keřem sedí malé kuře. Kuře se ztratilo a moc se bojí.
+
+Mlsalka ho opatrně vezme na záda. Společně jdou hledat kuřecí maminku. Maminka sedí u potoka a má velkou radost. „Děkuji ti, kočičko!“ zakokrhá.
+
+Mlsalka se usměje a jde domů. Ten den měla na talíři dvě sardinky.` }
+];
+const countWords = t => splitSentences(t).reduce((a, s) => a + s.length, 0);
+
+// ===== Stav =====
+const S = { book: null, sentences: [], sentStart: [], total: 0, pos: 0, chunk: null, els: [], hist: [], run: 0, auto: false, abortListen: null, manualResolve: null, tapResolve: null, live: null, errSyl: new Set(), recorded: false, lastRecord: [], pendingNext: false };
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const isManual = () => settings.manual || !SR;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+let toastT = null;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3200); }
+
+// ===== Prostředí =====
+const ORIGIN_OK = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+// ===== Hlas učitele (TTS) – jen český hlas, nikdy angličtina =====
+const hasTTS = 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+let csVoices = [], voicesKnown = false; const pend = new Set();
+const isCsVoice = v => /^cs([-_]|$)/i.test(v.lang || '') || /češtin|czech/i.test(v.name || '');
+function loadVoices() {
+  if (!hasTTS) return;
+  const all = speechSynthesis.getVoices();
+  voicesKnown = all.length > 0;
+  csVoices = all.filter(isCsVoice);
+  const sel = $('s_voiceURI'); const cur = settings.voiceURI;
+  sel.textContent = ''; sel.appendChild(new Option('Automaticky (český)', ''));
+  csVoices.forEach(v => sel.appendChild(new Option(v.name, v.voiceURI)));
+  sel.value = cur;
+  refreshBanner();
+}
+if (hasTTS) { speechSynthesis.onvoiceschanged = loadVoices; loadVoices(); }
+function pickVoice() { return csVoices.find(v => v.voiceURI === settings.voiceURI) || csVoices[0] || null; }
+// 'cs' = smí mluvit (jen český hlas), 'none' = mluvit zakázáno (učitel jen píše), 'off' = vypnuto v nastavení
+function ttsMode() {
+  if (!hasTTS || !settings.teacherTalks) return 'off';
+  if (csVoices.length) return 'cs';
+  if (voicesKnown) return 'none';
+  return settings.voiceConfirmed ? 'cs' : 'none';
+}
+function parsePron(str) {
+  const m = {};
+  String(str || '').split(/[;\n]+/).forEach(p => { const i = p.indexOf('='); if (i > 0) { const a = p.slice(0, i).trim().toLowerCase(), b = p.slice(i + 1).trim(); if (a && b) m[a] = b; } });
+  return m;
+}
+function ttsText(t) { const m = parsePron(settings.pron); return String(t).replace(/\p{L}+/gu, w => (m[w.toLowerCase()] !== undefined ? m[w.toLowerCase()] : w)); }
+async function speakRaw(text, mul = 1, force = false) {
+  if (!text) return;
+  const allowed = force ? (hasTTS && (csVoices.length > 0 || !voicesKnown)) : ttsMode() === 'cs';
+  if (!allowed) { await sleep(Math.min(1800, 500 + String(text).length * 90)); return; }
+  const v = pickVoice();
+  await new Promise(res => {
+    const u = new SpeechSynthesisUtterance(ttsText(text));
+    u.lang = v && v.lang ? v.lang.replace('_', '-') : 'cs-CZ';
+    u.rate = Math.max(0.3, Math.min(1.5, settings.rate * mul));
+    if (v) u.voice = v;
+    let done = false;
+    const fin = () => { if (done) return; done = true; clearTimeout(t); pend.delete(fin); updateMic(); res(); };
+    const t = setTimeout(fin, 2500 + String(text).length * 220 / u.rate);
+    u.onend = fin; u.onerror = fin; pend.add(fin); updateMic();
+    setTimeout(() => { if (!done) speechSynthesis.speak(u); }, 25);
+  });
+}
+function cancelSpeech() { if (hasTTS) speechSynthesis.cancel(); [...pend].forEach(f => f()); }
+
+function refreshBanner() {
+  const b = $('banner'); let msg = '';
+  if (!SR) msg = 'Tento prohlížeč neumí rozpoznávat řeč. Použij Chrome nebo Edge, případně zapni „Rodič rozhoduje“ v ⚙️.';
+  else if (!ORIGIN_OK) msg = 'Aplikace je otevřená ze souboru nebo z nezabezpečené adresy – mikrofon tady nefunguje. Nahraj ji na https (viz návod) a otevři z odkazu.';
+  else if (settings.teacherTalks && ttsMode() === 'none') msg = !hasTTS ? 'Prohlížeč neumí mluvit – učitel jen píše.' : voicesKnown ? 'Zařízení nemá český hlas, proto učitel jen píše (angličtinu jsem zakázal).' : 'Český hlas učitele zatím není ověřený – učitel jen píše.';
+  b.textContent = msg; b.classList.toggle('show', !!msg);
+  if (msg) { const bt = document.createElement('button'); bt.textContent = '🔧 Test'; bt.onclick = () => openTest(); b.appendChild(bt); }
+}
+
+// ===== Mikrofon =====
+const MIC_MSG = {
+  'not-allowed': 'Mikrofon je zablokovaný. Klepni na zámek vedle adresy → Oprávnění → Mikrofon → Povolit. Pak klepni na 🎤.',
+  'service-not-allowed': 'Prohlížeč nepovolil rozpoznávání řeči (často kvůli adrese bez https). Otevři aplikaci z https odkazu v Chrome.',
+  'audio-capture': 'Nenašel jsem mikrofon, nebo ho používá jiná aplikace. Zavři ostatní aplikace s mikrofonem a zkus to znovu.',
+  'network': 'Rozpoznávání řeči potřebuje internet (používá službu Google). Zkontroluj připojení a zkus to znovu.',
+  'language-not-supported': 'Rozpoznávání češtiny není v tomto zařízení dostupné.',
+  'start-failed': 'Rozpoznávání se nepodařilo spustit. Zavři aplikace, které používají mikrofon, a zkus to znovu.'
+};
+MIC_MSG.NotAllowedError = MIC_MSG.PermissionDeniedError = MIC_MSG['not-allowed'];
+MIC_MSG.NotFoundError = MIC_MSG.NotReadableError = MIC_MSG.OverconstrainedError = MIC_MSG['audio-capture'];
+MIC_MSG.SecurityError = MIC_MSG['service-not-allowed'];
+const micErrText = code => MIC_MSG[code] || ('Něco se pokazilo s mikrofonem (' + code + ').');
+
+async function primeMic() {
+  if (IS_IOS || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return { ok: true, skipped: true };
+  try { const st = await navigator.mediaDevices.getUserMedia({ audio: true }); st.getTracks().forEach(t => t.stop()); return { ok: true }; }
+  catch (e) { return { ok: false, err: (e && e.name) || 'error' }; }
+}
+
+// ===== Poslech (rozpoznávání řeči) =====
+function listenOnce() {
+  return new Promise(resolve => {
+    const segs = []; let cur = null, rec = null, done = false, silenceT = null, hardT = null, gotSpeech = false, quick = 0, t0 = 0;
+    const patience = settings.patience * 1000;
+    const FATAL = ['not-allowed', 'service-not-allowed', 'audio-capture', 'network', 'language-not-supported'];
+    const finish = r => {
+      if (done) return; done = true; clearTimeout(silenceT); clearTimeout(hardT);
+      try { rec && rec.abort(); } catch (e) {}
+      if (cur) { segs.push(cur); cur = null; }
+      S.abortListen = null; S.listening = false; updateMic();
+      resolve(Object.assign({ segments: segs }, r));
+    };
+    S.abortListen = () => finish({ aborted: true });
+    const arm = () => { clearTimeout(silenceT); silenceT = setTimeout(() => finish({}), patience); };
+    const start = () => {
+      if (done) return;
+      try { rec = new SR(); } catch (e) { finish({ error: 'start-failed' }); return; }
+      rec.lang = 'cs-CZ'; rec.interimResults = true; rec.maxAlternatives = 5; rec.continuous = false;
+      t0 = Date.now();
+      rec.onaudiostart = () => { if (!gotSpeech) setHeard('🎧 Poslouchám… čti nahlas'); };
+      rec.onspeechstart = () => { gotSpeech = true; clearTimeout(hardT); clearTimeout(silenceT); hardT = setTimeout(() => finish({}), 90000); };
+      rec.onspeechend = () => { if (gotSpeech) arm(); };
+      rec.onresult = e => {
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const r = e.results[i]; const alts = [];
+          for (let a = 0; a < r.length; a++) { const tr = (r[a].transcript || '').trim(); if (tr) alts.push(tr); }
+          if (!alts.length) continue;
+          if (r.isFinal) { segs.push({ alts }); cur = null; } else cur = { alts };
+        }
+        if (!gotSpeech) { gotSpeech = true; clearTimeout(hardT); hardT = setTimeout(() => finish({}), 90000); }
+        arm();
+        const live = segs.map(s => s.alts[0]).concat(cur ? [cur.alts[0]] : []).join(' ');
+        setHeard(live); paintLive(live);
+      };
+      rec.onerror = e => { S.lastErr = e.error; if (FATAL.includes(e.error)) finish({ error: e.error }); };
+      rec.onend = () => {
+        if (done) return;
+        if (cur) { segs.push(cur); cur = null; }
+        if (Date.now() - t0 < 350 && !gotSpeech && !segs.length) { if (++quick >= 4) { finish({ error: 'start-failed' }); return; } } else quick = 0;
+        setTimeout(start, 150);
+      };
+      try { rec.start(); } catch (e) { if (++quick >= 4) finish({ error: 'start-failed' }); else setTimeout(start, 300); }
+    };
+    hardT = setTimeout(() => finish({}), 12000);
+    S.listening = true; S.lastErr = ''; updateMic(); start();
+  });
+}
+
+// ===== Test mikrofonu a hlasu =====
+let testStop = null;
+function stopTestMic() { if (testStop) testStop(); }
+function chkRow(parent, title) {
+  const r = document.createElement('div'); r.className = 'chk';
+  const ic = document.createElement('div'); ic.className = 'ic'; ic.textContent = '⏳';
+  const tx = document.createElement('div'); tx.className = 'tx';
+  const t = document.createElement('b'); t.textContent = title;
+  const d = document.createElement('span'); const f = document.createElement('span'); f.className = 'fix';
+  tx.appendChild(t); tx.appendChild(d); tx.appendChild(f); r.appendChild(ic); r.appendChild(tx); parent.appendChild(r);
+  return {
+    tx,
+    set(state, detail, fix) { ic.textContent = state === 'ok' ? '✅' : state === 'bad' ? '❌' : state === 'warn' ? '⚠️' : '⏳'; d.textContent = detail || ''; f.textContent = fix || ''; }
+  };
+}
+async function testMic(c, bar) {
+  stopTestMic();
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { c.set('bad', 'Prohlížeč neumožňuje přístup k mikrofonu.', ORIGIN_OK ? 'Zkus Chrome.' : micErrText('service-not-allowed')); return; }
+  c.set('wait', 'Čekám na povolení mikrofonu…');
+  try {
+    const st = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const AC = window.AudioContext || window.webkitAudioContext; const ctx = new AC();
+    const an = ctx.createAnalyser(); an.fftSize = 512; ctx.createMediaStreamSource(st).connect(an);
+    const data = new Uint8Array(an.fftSize); let peak = 0, raf = 0;
+    const tick = () => { an.getByteTimeDomainData(data); let m = 0; for (let i = 0; i < data.length; i++) m = Math.max(m, Math.abs(data[i] - 128)); peak = Math.max(peak, m); bar.style.width = Math.min(100, m * 1.6) + '%'; raf = requestAnimationFrame(tick); };
+    tick();
+    testStop = () => { cancelAnimationFrame(raf); st.getTracks().forEach(t => t.stop()); try { ctx.close(); } catch (e) {} bar.style.width = '0'; testStop = null; };
+    S.micPrimed = true;
+    c.set('ok', 'Mikrofon je povolený. Řekni něco nahlas – pruh se má hýbat.');
+    setTimeout(() => { if (testStop && peak < 3) c.set('warn', 'Mikrofon je povolený, ale neslyším žádný zvuk.', 'Zkontroluj, že není ztlumený, a mluv blíž k zařízení.'); }, 4000);
+  } catch (e) { c.set('bad', 'Mikrofon se nepodařilo získat (' + ((e && e.name) || 'chyba') + ').', micErrText(e && e.name)); }
+}
+function testSR(c) {
+  stopTestMic();
+  if (!SR) { c.set('bad', 'Tento prohlížeč neumí rozpoznávat řeč.', 'Použij Chrome nebo Edge.'); return; }
+  c.set('wait', 'Poslouchám… řekni například „máma má mísu“ (max. 10 s).');
+  let got = '', finished = false, rec;
+  const fin = (state, detail, fix) => { if (finished) return; finished = true; clearTimeout(tm); try { rec.abort(); } catch (e) {} c.set(state, detail, fix); };
+  const tm = setTimeout(() => fin(got ? 'ok' : 'warn', got ? 'Slyším: „' + got + '“' : 'Nic jsem neslyšel.', got ? '' : 'Mluv hned po klepnutí, hlasitěji a blíž k mikrofonu.'), 10000);
+  try { rec = new SR(); } catch (e) { fin('bad', 'Rozpoznávání se nepodařilo spustit.', micErrText('start-failed')); return; }
+  rec.lang = 'cs-CZ'; rec.interimResults = true; rec.maxAlternatives = 1;
+  rec.onresult = e => {
+    got = Array.from(e.results).map(r => r[0].transcript).join(' ').trim();
+    if (e.results[e.results.length - 1].isFinal) fin('ok', 'Rozpoznáno: „' + got + '“ – rozpoznávání češtiny funguje.');
+    else c.set('wait', 'Slyším: „' + got + '“');
+  };
+  rec.onerror = e => { if (e.error === 'no-speech') fin('warn', 'Nic jsem neslyšel.', 'Mluv hned po klepnutí, hlasitěji a blíž k mikrofonu.'); else fin('bad', 'Chyba rozpoznávání: ' + e.error, micErrText(e.error)); };
+  rec.onend = () => fin(got ? 'ok' : 'warn', got ? 'Slyším: „' + got + '“' : 'Rozpoznávání skončilo bez výsledku.', got ? '' : 'Zkus to znovu a mluv hned po klepnutí.');
+  try { rec.start(); } catch (e) { fin('bad', 'Nepodařilo se spustit rozpoznávání.', micErrText('start-failed')); }
+}
+function voiceStatus(c) {
+  if (!hasTTS) c.set('bad', 'Prohlížeč neumí mluvit.', 'Učitel bude jen psát.');
+  else if (csVoices.length) c.set('ok', 'Český hlas: ' + pickVoice().name);
+  else if (voicesKnown) c.set('bad', 'V zařízení není český hlas. Jiné hlasy jsem zakázal, aby učitel nemluvil anglicky.', 'Android: Nastavení → Systém → Jazyky a zadávání → Převod textu na řeč → Google → Nainstalovat hlasová data → Čeština. Windows: Nastavení → Čas a jazyk → Řeč → Přidat hlasy → čeština. Potom aplikaci obnov.');
+  else c.set('warn', 'Seznam hlasů zařízení se zatím nenačetl.', 'Klepni na „Přehrát ukázku“. Když zní česky, klepni na „Zní česky“, jinak na „Zní anglicky“.');
+}
+function openTest() {
+  openModal('mTest');
+  const b = $('testBody'); b.textContent = '';
+  const c1 = chkRow(b, '1. Adresa aplikace');
+  if (ORIGIN_OK) c1.set('ok', location.origin);
+  else c1.set('bad', 'Otevřeno z: ' + (location.protocol === 'file:' ? 'souboru v zařízení' : location.protocol + '//' + (location.host || '?')), 'Takto mikrofon a rozpoznávání řeči nefungují. Nahraj aplikaci na https (návod v README) a otevři ji z odkazu nebo z ikony na ploše.');
+  const c2 = chkRow(b, '2. Rozpoznávání řeči v prohlížeči');
+  if (SR) c2.set('ok', 'Podporováno.'); else c2.set('bad', 'Tento prohlížeč to neumí.', 'Použij Chrome nebo Edge (na iPhonu bývá nespolehlivé). Nebo zapni „Rodič rozhoduje“ v ⚙️.');
+  const c3 = chkRow(b, '3. Mikrofon'); c3.set('wait', 'Klepni na tlačítko níže.');
+  const meter = document.createElement('div'); meter.className = 'meter'; const mi = document.createElement('i'); meter.appendChild(mi); c3.tx.appendChild(meter);
+  const bt3 = document.createElement('button'); bt3.className = 'btn'; bt3.textContent = '🎤 Povolit a vyzkoušet mikrofon'; bt3.style.marginTop = '6px'; bt3.onclick = () => testMic(c3, mi); c3.tx.appendChild(bt3);
+  const c4 = chkRow(b, '4. Rozpoznání češtiny'); c4.set('wait', 'Klepni na tlačítko níže a řekni větu.');
+  const bt4 = document.createElement('button'); bt4.className = 'btn'; bt4.textContent = '🗣 Zkusit rozpoznání'; bt4.style.marginTop = '6px'; bt4.onclick = () => testSR(c4); c4.tx.appendChild(bt4);
+  const c5 = chkRow(b, '5. Hlas učitele (jen česky)'); voiceStatus(c5);
+  const row5 = document.createElement('div'); row5.className = 'btns';
+  const play = document.createElement('button'); play.className = 'btn'; play.textContent = '▶ Přehrát ukázku';
+  play.onclick = async () => { if (hasTTS && (csVoices.length || !voicesKnown)) { cancelSpeech(); await speakRaw('Ahoj, já jsem tvůj učitel. Budeme spolu číst.', 1, true); } else voiceStatus(c5); };
+  const yes = document.createElement('button'); yes.className = 'btn grn'; yes.textContent = 'Zní česky ✔';
+  yes.onclick = () => { settings.voiceConfirmed = true; settings.teacherTalks = true; $('s_teacherTalks').checked = true; saveSettings(); c5.set('ok', 'Hlas potvrzen jako český.'); refreshBanner(); };
+  const no = document.createElement('button'); no.className = 'btn red'; no.textContent = 'Zní anglicky ✖';
+  no.onclick = () => { settings.voiceConfirmed = false; settings.teacherTalks = false; $('s_teacherTalks').checked = false; saveSettings(); c5.set('warn', 'Hlas vypnut – učitel bude jen psát.'); refreshBanner(); };
+  row5.appendChild(play); row5.appendChild(yes); row5.appendChild(no); c5.tx.appendChild(row5);
+  const h = document.createElement('h3'); h.textContent = 'Zkouška hláskování'; b.appendChild(h);
+  const p = document.createElement('p'); p.className = 'small'; p.textContent = 'Klepni na slabiku a poslechni. Kterou čte špatně, zapiš v ⚙️ do „Vlastní výslovnost“ (např. ok=okk;pi=pí).'; b.appendChild(p);
+  const sb = document.createElement('div'); sb.className = 'sylbtns';
+  ['ok', 'po', 'pi', 'to', 'no', 'ba', 'bo', 'my', 'ty', 'mí', 'ří', 'ško'].forEach(s => {
+    const x = document.createElement('button'); x.textContent = s;
+    x.onclick = async () => { cancelSpeech(); if (hasTTS && (csVoices.length || !voicesKnown)) await speakRaw(s, 0.8, true); else voiceStatus(c5); };
+    sb.appendChild(x);
+  });
+  b.appendChild(sb);
+}
+
+// ===== Načtení knihy a vykreslení =====
+function loadBook(b) {
+  S.book = b; S.sentences = splitSentences(b.text); S.sentStart = []; let n = 0;
+  for (const s of S.sentences) { S.sentStart.push(n); n += s.length; }
+  S.total = n; S.hist = [];
+  $('bookTitle').textContent = b.title;
+}
+function findSentence(pos) {
+  let lo = 0, hi = S.sentStart.length - 1;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (S.sentStart[mid] <= pos) lo = mid; else hi = mid - 1; }
+  return lo;
+}
+function buildChunk(pos) {
+  const s = findSentence(pos); const toks = S.sentences[s]; const off = pos - S.sentStart[s];
+  const end = chunkEnd(toks, off, settings.unit);
+  S.chunk = { s, start: pos, gEnd: pos + (end - off), words: toks.slice(off, end).map(mkWord) };
+}
+function renderWord(el, w, syl, errK = -1) {
+  el.textContent = '';
+  if (w.pre) el.appendChild(document.createTextNode(w.pre));
+  if (syl) sylOf(w).forEach((p, k) => { const sp = document.createElement('span'); sp.className = 'syl' + (k === errK ? ' err' : ''); sp.textContent = p; el.appendChild(sp); });
+  else el.appendChild(document.createTextNode(w.core));
+  if (w.post) el.appendChild(document.createTextNode(w.post));
+}
+function renderReader() {
+  const rd = $('reader'); rd.textContent = ''; S.els = [];
+  if (!S.chunk) return;
+  const c = S.chunk, K = settings.sentences;
+  const b0 = Math.floor(c.s / K) * K, b1 = Math.min(S.sentences.length, b0 + K);
+  for (let s = b0; s < b1; s++) {
+    const toks = S.sentences[s]; const line = document.createElement('div'); line.className = 'sent';
+    for (let t = 0; t < toks.length; t++) {
+      const g = S.sentStart[s] + t; const el = document.createElement('span'); el.className = 'w';
+      if (g >= c.start && g < c.gEnd) { const i = g - c.start; el.classList.add('inc'); renderWord(el, c.words[i], settings.syl === 'always'); S.els[i] = el; }
+      else { renderWord(el, mkWord(toks[t]), false); el.classList.add(g < c.start ? 'past' : 'fut'); }
+      line.appendChild(el); line.appendChild(document.createTextNode(' '));
+    }
+    rd.appendChild(line);
+  }
+  updateProgress();
+}
+function updateProgress() {
+  const f = S.total ? S.pos / S.total : 0;
+  $('pfill').style.width = (f * 100).toFixed(1) + '%';
+  $('progText').textContent = S.total ? Math.round(f * 100) + ' % · slovo ' + (S.pos + 1) + ' z ' + S.total : '';
+}
+function goPos(p) {
+  S.pos = Math.max(0, Math.min(p, S.total - 1));
+  if (S.book && S.book.id !== 'practice') { progress[S.book.id] = { pos: S.pos, updated: Date.now() }; saveProgress(); }
+  buildChunk(S.pos); renderReader(); setHeard('');
+}
+function setStatus(i, st) { const el = S.els[i]; if (!el) return; el.classList.remove('ok', 'close', 'bad', 'heard'); if (st) el.classList.add(st); }
+function resetStatuses() { S.els.forEach((_, i) => { setStatus(i, ''); S.els[i] && S.els[i].classList.remove('focus'); }); }
+function paint(ev, idxs) { ev.items.forEach((it, k) => setStatus(idxs ? idxs[k] : k, it.status === 'miss' ? 'bad' : it.status)); }
+function paintLive(text) {
+  if (!S.live) return; const { words, idxs } = S.live;
+  const ev = evaluateChunk(words, [{ alts: [text] }], settings.strict); let last = -1;
+  ev.items.forEach((it, k) => { if (it.status === 'ok' && !it.skipped) last = k; });
+  ev.items.forEach((it, k) => { const el = S.els[idxs[k]]; if (!el) return; el.classList.remove('ok', 'close', 'bad', 'heard'); if (k <= last && it.status === 'ok') el.classList.add('heard'); });
+}
+function setHeard(t) { $('heard').textContent = t ? 'Slyším: ' + t : ''; }
+function showSylFor(i, k = -1) { if (settings.syl === 'never' || !S.els[i]) return; renderWord(S.els[i], S.chunk.words[i], true, k); }
+function hlSyl(i, k) { const el = S.els[i]; if (!el) return; el.querySelectorAll('.syl').forEach((s, n) => s.classList.toggle('hl', n === k)); }
+function focusWord(i, on = true) { S.els[i] && S.els[i].classList.toggle('focus', on); }
+
+// ===== Učitel =====
+const AV = { idle: '🦉', happy: '🤩', help: '🤔', wait: '👂' };
+function teach(text, mood = 'idle') { $('bubble').textContent = text; $('avatar').textContent = AV[mood] || '🦉'; }
+async function say(text, mood = 'idle') {
+  teach(text, mood);
+  await speakRaw(text);
+}
+const PRAISE = ['Výborně!', 'Skvělé!', 'Správně!', 'Bezvadné!', 'Šikulka!', 'To se ti povedlo!', 'Krásně přečteno!', 'Paráda!'];
+const PRAISE_HARD = ['Hurá, to je ono!', 'Už to máš!', 'Tak vidíš, že to umíš!', 'Teď je to správně!'];
+const TRY_AGAIN = ['Skoro! Poslouchej ještě jednou.', 'Blízko! Ještě jednou pomalu.', 'Pojď, zkusíme to znovu.'];
+const SILENT = ['Nic neslyším. Čti nahlas a blíž k mikrofonu.', 'Pořád nic neslyším. Zkontroluj mikrofon (🔧 Test) a čti nahlas.'];
+const chunkText = c => c.words.map(w => w.core + ((w.post.match(/[,.!?;:…]/) || [''])[0])).join(' ');
+async function demoWord(run, i) {
+  const w = S.chunk.words[i]; const syl = sylOf(w);
+  if (syl.length > 1) {
+    for (let k = 0; k < syl.length; k++) {
+      hlSyl(i, k); await speakRaw(syl[k], 0.8); if (run !== S.run) return; await sleep(160);
+    }
+    hlSyl(i, -1);
+  }
+  await speakRaw(w.core, 0.9);
+}
+async function modelRead(run) {
+  const c = S.chunk;
+  if (c.words.length === 1) { showSylFor(0); await demoWord(run, 0); }
+  else await speakRaw(chunkText(c));
+}
+
+function stopIO() {
+  cancelSpeech(); if (S.abortListen) S.abortListen();
+  if (S.manualResolve) { const r = S.manualResolve; S.manualResolve = null; r('abort'); }
+  if (S.tapResolve) { const r = S.tapResolve; S.tapResolve = null; r(); }
+  S.live = null;
+}
+function pause(msg = true) {
+  S.run++; S.auto = false; stopIO(); updateMic();
+  if (msg) teach('Pauza. Klepni na 🎤 a pokračujeme.', 'wait');
+}
+
+async function hear(run, words, idxs) {
+  idxs = idxs || words.map((_, i) => i);
+  if (isManual()) {
+    setHeard('');
+    const v = await new Promise(res => { S.manualResolve = res; updateMic(); });
+    S.manualResolve = null;
+    if (v === 'abort') return { aborted: true };
+    const items = words.map(w => ({ status: (w.skip || v === 'ok') ? 'ok' : 'bad', sim: v === 'ok' ? 1 : 0, heard: '' }));
+    return { items, allOk: items.every(i => i.status === 'ok'), heardText: '' };
+  }
+  if (!settings.autoListen) {
+    teach('Klepni na 🎤 a čti nahlas.', 'wait');
+    await new Promise(res => { S.tapResolve = res; updateMic(); }); S.tapResolve = null;
+    if (run !== S.run) return { aborted: true };
+  }
+  await sleep(400); if (run !== S.run) return { aborted: true };
+  S.live = { words, idxs };
+  const r = await listenOnce();
+  S.live = null;
+  if (r.aborted || run !== S.run) return { aborted: true };
+  if (r.error) return { error: r.error };
+  if (!r.segments.length) return { silent: true };
+  return evaluateChunk(words, r.segments, settings.strict);
+}
+function micError(err) {
+  S.auto = false; S.micPrimed = false; updateMic();
+  teach(micErrText(err), 'help'); setHeard('');
+  toast('Pomůže 🔧 Test nahoře, nebo zapni „Rodič rozhoduje“ v ⚙️.');
+  if (['not-allowed', 'service-not-allowed', 'audio-capture', 'start-failed', 'NotAllowedError', 'PermissionDeniedError', 'NotFoundError', 'NotReadableError', 'SecurityError'].includes(err)) openTest();
+}
+
+function recordFirst(ev) {
+  const c = S.chunk; const d = dayStats(); S.recorded = true; S.lastRecord = [];
+  d.chunks++; if (ev.allOk) d.first++;
+  ev.items.forEach((it, i) => {
+    const w = c.words[i]; if (w.skip || !w.key) return;
+    const st = stats.words[w.key] || (stats.words[w.key] = { ok: 0, fail: 0, t: 0, w: w.core.toLowerCase() });
+    const good = it.status === 'ok'; if (good) st.ok++; else st.fail++;
+    st.t = Date.now(); d.words++; if (good) d.wordsOk++;
+    S.lastRecord.push({ key: w.key, good });
+  });
+  saveStats();
+}
+function addStar() { dayStats().stars++; saveStats(); updateStars(); if (dayStats().stars % 5 === 0) burst(); }
+function updateStars() { $('stars').textContent = '⭐ ' + (stats.days[todayKey()] ? stats.days[todayKey()].stars : 0); }
+function burst() { const em = ['🎉', '⭐', '🌟', '✨', '🎈']; for (let i = 0; i < 22; i++) { const s = document.createElement('div'); s.className = 'conf'; s.textContent = pick(em); s.style.left = Math.random() * 100 + 'vw'; s.style.animationDelay = (Math.random() * 0.6) + 's'; document.body.appendChild(s); setTimeout(() => s.remove(), 2800); } }
+
+function advance() {
+  const next = S.chunk.gEnd; S.hist.push(S.pos); if (S.hist.length > 300) S.hist.shift();
+  if (next >= S.total) { finishBook(); return false; }
+  goPos(next); return true;
+}
+function finishBook() {
+  S.auto = false; updateMic(); burst();
+  if (S.book && S.book.id !== 'practice') { progress[S.book.id] = { pos: 0, done: true, updated: Date.now() }; saveProgress(); }
+  teach('Hurá, dočetl(a) jsi to celé! 🎉', 'happy');
+  if (settings.teacherTalks) speakRaw('Hurá! Dočetli jsme to celé. Jsi šikulka!');
+  setTimeout(openStats, 1200);
+}
+async function afterChunk(run) {
+  if (run !== S.run) return;
+  if (!settings.autoNext) { teach('Hotovo! Klepni na 🎤 pro další.', 'happy'); S.auto = false; S.pendingNext = true; updateMic(); return; }
+  await sleep(450); if (run !== S.run) return;
+  if (advance()) runChunk();
+}
+async function success(run, firstTry) {
+  S.els.forEach((_, i) => { focusWord(i, false); setStatus(i, 'ok'); });
+  if (firstTry) addStar();
+  await say(firstTry ? pick(PRAISE) : pick(PRAISE_HARD), 'happy');
+  await afterChunk(run);
+}
+async function giveUp(run) {
+  S.els.forEach((_, i) => focusWord(i, false));
+  await say('To nevadí. Přečteme to spolu a příště si to zopakujeme.', 'help'); if (run !== S.run) return;
+  await modelRead(run); if (run !== S.run) return;
+  await afterChunk(run);
+}
+async function coachProblems(run, ev) {
+  const c = S.chunk; let allFixed = true; const single = c.words.filter(w => !w.skip).length === 1;
+  const probs = ev.items.map((it, i) => ({ it, i })).filter(x => x.it.status !== 'ok').slice(0, 3);
+  for (const { it, i } of probs) {
+    const w = c.words[i]; const d = diagnose(w, it, settings.gender);
+    focusWord(i); showSylFor(i, d.syl);
+    await say(d.msg, 'help'); if (run !== S.run) return false;
+    await demoWord(run, i); if (run !== S.run) return false;
+    let ok = false;
+    for (let t = 0; t < 2 && !ok; t++) {
+      teach('Teď to řekni ty… 🎤', 'wait');
+      const ev2 = await hear(run, [w], [i]);
+      if (run !== S.run || ev2.aborted) return false;
+      if (ev2.error) { micError(ev2.error); return false; }
+      if (ev2.silent) continue;
+      paint(ev2, [i]);
+      if (ev2.allOk) { ok = true; break; }
+      if (t === 0) { await say(pick(TRY_AGAIN), 'help'); if (run !== S.run) return false; await demoWord(run, i); if (run !== S.run) return false; }
+    }
+    focusWord(i, false);
+    if (ok) { setStatus(i, 'ok'); if (!single) await say(pick(PRAISE_HARD), 'happy'); } else { allFixed = false; setStatus(i, 'close'); }
+    if (run !== S.run) return false;
+  }
+  return allFixed;
+}
+
+async function runChunk(opts = {}) {
+  stopIO(); const run = ++S.run; S.auto = true; S.pendingNext = false; updateMic();
+  const c = S.chunk; if (!c) return;
+  if (!isManual() && !S.micPrimed) {
+    teach('Povol mikrofon, až se prohlížeč zeptá. 🎤', 'wait');
+    const pm = await primeMic();
+    if (run !== S.run) return;
+    if (!pm.ok) { micError(pm.err); return; }
+    S.micPrimed = true;
+  }
+  if (!c.words.some(w => !w.skip)) { await sleep(150); if (run !== S.run) return; if (advance()) runChunk(); return; }
+  S.recorded = false; S.errSyl = new Set(); resetStatuses(); renderReader();
+  const nEval = c.words.filter(w => !w.skip).length;
+  let round = 0, silent = 0;
+  if (opts.greet) { teach(opts.greet, 'happy'); await sleep(700); if (run !== S.run) return; }
+  if (settings.modelFirst) { await modelRead(run); if (run !== S.run) return; }
+  let note = '';
+  while (run === S.run) {
+    teach(note || (round === 0 ? (isManual() ? 'Přečti nahlas a rodič potvrdí tlačítkem.' : 'Přečti nahlas označený text. Já poslouchám. 🎤') : 'Zkus to přečíst ještě jednou celé.'), 'wait'); note = '';
+    const ev = await hear(run, c.words);
+    if (run !== S.run || ev.aborted) return;
+    if (ev.error) { micError(ev.error); return; }
+    if (ev.silent) {
+      silent++;
+      if (silent >= 3) { S.auto = false; updateMic(); teach('Nic neslyším' + (S.lastErr ? ' (' + S.lastErr + ')' : '') + '. Klepni na 🎤, až budeš chtít pokračovat, nebo zkus 🔧 Test.', 'wait'); return; }
+      note = SILENT[Math.min(silent - 1, SILENT.length - 1)]; continue;
+    }
+    silent = 0; round++;
+    paint(ev); setHeard(ev.heardText);
+    if (!S.recorded) recordFirst(ev);
+    if (ev.allOk) { await success(run, round === 1); return; }
+    if (round >= 3) { await giveUp(run); return; }
+    const fixed = await coachProblems(run, ev);
+    if (run !== S.run) return;
+    if (nEval === 1) { if (fixed) await success(run, false); else await giveUp(run); return; }
+    await say('Teď přečti celý úsek znovu.', 'help');
+    if (run !== S.run) return;
+    resetStatuses();
+  }
+}
+
+// ===== Ovládání =====
+function updateMic() {
+  const m = $('btnMic'); m.classList.remove('listening', 'busy');
+  let icon = '🎤', lbl = 'Čti';
+  if (S.auto) {
+    if (S.listening) { m.classList.add('listening'); icon = '👂'; lbl = 'Poslouchám'; }
+    else if (pend.size > 0) { m.classList.add('busy'); icon = '🦉'; lbl = 'Učitel'; }
+    else { m.classList.add('busy'); icon = '⏳'; lbl = 'Pauza?'; }
+  } else if (S.pendingNext) { icon = '▶️'; lbl = 'Další'; }
+  $('micIcon').textContent = icon; $('micLbl').textContent = lbl;
+  $('manualBar').hidden = !(isManual() && S.auto);
+}
+function onMic() {
+  if (!S.chunk) { openLibrary(); return; }
+  if (S.tapResolve) { const r = S.tapResolve; S.tapResolve = null; r(); return; }
+  if (S.pendingNext) { S.pendingNext = false; if (advance()) runChunk(); return; }
+  if (S.auto) pause(); else runChunk();
+}
+function skip() {
+  if (!S.chunk) return; const was = S.auto; pause(false);
+  if (!advance()) return; S.auto = was; if (was) runChunk(); else { teach('Klepni na 🎤 a čti.', 'idle'); updateMic(); }
+}
+function prev() {
+  if (!S.chunk) return; const was = S.auto; pause(false);
+  let p = S.hist.length ? S.hist.pop() : (S.chunk.s > 0 ? S.sentStart[S.chunk.s - 1] : 0);
+  goPos(p); S.auto = was; if (was) runChunk(); else updateMic();
+}
+async function listenBtn() {
+  if (!S.chunk) return; const was = S.auto; stopIO(); const run = ++S.run; S.auto = false; updateMic();
+  await modelRead(run); if (run !== S.run) return;
+  if (was) runChunk(); else teach('Teď to zkus ty. Klepni na 🎤.', 'wait');
+}
+async function override() {
+  if (!S.chunk) return;
+  if (S.manualResolve) { const r = S.manualResolve; S.manualResolve = null; r('ok'); return; }
+  stopIO(); const run = ++S.run; S.auto = true; updateMic();
+  const c = S.chunk;
+  if (!S.recorded) recordFirst({ allOk: true, items: c.words.map(() => ({ status: 'ok' })) });
+  else { S.lastRecord.forEach(r => { if (!r.good) { const st = stats.words[r.key]; if (st && st.fail > 0) { st.fail--; st.ok++; } r.good = true; } }); saveStats(); }
+  await success(run, false);
+}
+function setFs(v) {
+  settings.fs = Math.max(24, Math.min(140, v)); saveSettings();
+  document.documentElement.style.setProperty('--fs', settings.fs + 'px'); $('fsVal').textContent = settings.fs + ' px'; $('s_fs').value = settings.fs;
+  $('fsPrev').style.fontSize = Math.min(settings.fs, 64) + 'px';
+}
+function jumpTo(f) {
+  if (!S.total) return; pause(false);
+  const g = Math.floor(f * S.total); const s = findSentence(Math.min(g, S.total - 1));
+  goPos(S.sentStart[s]); teach('Klepni na 🎤 a pokračujeme odtud.', 'idle'); updateMic();
+}
+
+// ===== Okna =====
+function openModal(id) { pause(false); stopTestMic(); document.querySelectorAll('.modal').forEach(m => m.classList.remove('open')); $(id).classList.add('open'); }
+function closeModals() { stopTestMic(); document.querySelectorAll('.modal').forEach(m => m.classList.remove('open')); }
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+
+async function openLibrary() {
+  openModal('mLib'); const list = $('libList'); list.textContent = 'Načítám…';
+  const user = await DB.all();
+  const all = BUILTIN.concat(user.sort((a, b) => (b.added || 0) - (a.added || 0)));
+  list.textContent = '';
+  const hard = hardWords();
+  if (hard.length) {
+    const r = el('div', 'book'); const m = el('div', 'meta'); m.appendChild(el('div', 't', '🎯 Moje těžká slova')); m.appendChild(el('div', 's', hard.length + ' slov k procvičení'));
+    const b = el('button', 'btn org', 'Procvičit'); b.onclick = startPractice; r.appendChild(m); r.appendChild(b); list.appendChild(r);
+  }
+  for (const b of all) {
+    const words = b.words || (b.words = countWords(b.text)); const pr = progress[b.id];
+    const pct = pr ? (pr.done ? 100 : Math.round(100 * (pr.pos || 0) / Math.max(1, words))) : 0;
+    const r = el('div', 'book'); const m = el('div', 'meta');
+    m.appendChild(el('div', 't', b.title)); m.appendChild(el('div', 's', words + ' slov' + (pr ? ' · ' + (pr.done ? 'dočteno' : pct + ' %') : '')));
+    const mini = el('div', 'mini'); const i = el('i'); i.style.width = pct + '%'; mini.appendChild(i); m.appendChild(mini);
+    const go = el('button', 'btn grn', pr && !pr.done && pr.pos ? 'Pokračovat' : 'Číst'); go.onclick = () => openBook(b, false);
+    r.appendChild(m); r.appendChild(go);
+    if (pr && (pr.pos || pr.done)) { const re = el('button', 'btn sec', '↺'); re.title = 'Od začátku'; re.onclick = () => openBook(b, true); r.appendChild(re); }
+    if (!b.builtin) { const d = el('button', 'btn red', '🗑'); d.onclick = async () => { if (confirm('Smazat „' + b.title + '“?')) { await DB.del(b.id); delete progress[b.id]; saveProgress(); openLibrary(); } }; r.appendChild(d); }
+    list.appendChild(r);
+  }
+}
+function openBook(b, fromStart) {
+  closeModals(); pause(false); loadBook(b);
+  if (!S.total) { toast('Text neobsahuje žádná slova.'); return; }
+  const pr = progress[b.id]; const pos = fromStart ? 0 : (pr && !pr.done ? pr.pos || 0 : 0);
+  if (b.id !== 'practice') LS.set('cs.last', b.id);
+  goPos(pos);
+  runChunk({ greet: pos > 0 ? 'Vítej zpátky! Pokračujeme tam, kde jsme skončili.' : 'Ahoj! Čti nahlas, já poslouchám a pomůžu ti.' });
+}
+function hardWords() {
+  return Object.entries(stats.words).filter(([, s]) => s.fail > s.ok).sort((a, b) => (b[1].fail - b[1].ok) - (a[1].fail - a[1].ok) || b[1].t - a[1].t).slice(0, 15).map(([k, s]) => Object.assign({ key: k }, s));
+}
+function startPractice() {
+  const hw = hardWords(); if (!hw.length) { toast('Zatím nemáš žádná těžká slova. 👍'); return; }
+  openBook({ id: 'practice', title: '🎯 Těžká slova', text: hw.map(h => h.w).join('\n') }, true);
+}
+async function addText() {
+  const text = $('newText').value.trim(); if (!text) { toast('Vlož nejdřív nějaký text.'); return; }
+  const title = $('newTitle').value.trim() || text.split(/\s+/).slice(0, 4).join(' ') + '…';
+  const b = { id: 'u' + Date.now(), title, text, added: Date.now(), words: countWords(text) };
+  await DB.put(b); $('newText').value = ''; $('newTitle').value = ''; toast('Uloženo do knihovny.'); openLibrary();
+}
+async function decodeText(buf) {
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (e) { return new TextDecoder('windows-1250').decode(buf); }
+}
+async function onFile(e) {
+  const f = e.target.files[0]; if (!f) return; const name = f.name.toLowerCase();
+  try {
+    const buf = await f.arrayBuffer();
+    if (name.endsWith('.epub')) { const r = await epubToText(buf); $('newText').value = r.text; if (r.title && !$('newTitle').value) $('newTitle').value = r.title; toast('EPUB načten – klepni na „Uložit do knihovny“.'); }
+    else if (name.endsWith('.pdf')) toast('PDF zatím neumím čist. Převeď ho prosím na TXT nebo EPUB.');
+    else { $('newText').value = await decodeText(buf); if (!$('newTitle').value) $('newTitle').value = f.name.replace(/\.[^.]+$/, ''); toast('Text načten – klepni na „Uložit do knihovny“.'); }
+  } catch (err) { toast('Soubor se nepodařilo načíst: ' + err.message); }
+  e.target.value = '';
+}
+function openStats() {
+  openModal('mStats'); const b = $('statsBody'); b.textContent = '';
+  const d = stats.days[todayKey()] || { chunks: 0, first: 0, words: 0, wordsOk: 0, stars: 0 };
+  const pct = d.words ? Math.round(100 * d.wordsOk / d.words) : 0;
+  b.appendChild(el('h3', '', 'Dnes'));
+  const st = el('div', 'stat');
+  [[d.stars, 'hvězdiček'], [d.chunks, 'přečtených úseků'], [d.words, 'slov'], [pct + ' %', 'správně napoprvé']].forEach(([v, l]) => { const x = el('div'); x.appendChild(el('b', '', String(v))); x.appendChild(el('span', '', l)); st.appendChild(x); });
+  b.appendChild(st);
+  const hw = hardWords(); b.appendChild(el('h3', '', 'Těžká slova'));
+  if (!hw.length) b.appendChild(el('p', 'small', 'Zatím žádná – skvělá práce! 👍'));
+  else {
+    const ch = el('div', 'chips'); hw.forEach(h => ch.appendChild(el('span', 'chip', h.w + ' (' + h.fail + '×)'))); b.appendChild(ch);
+    const bt = el('div', 'btns'); const p = el('button', 'btn org', '🎯 Procvičit těžká slova'); p.onclick = startPractice; bt.appendChild(p); b.appendChild(bt);
+  }
+  const days = Object.keys(stats.days).sort().slice(-7).reverse();
+  if (days.length) {
+    b.appendChild(el('h3', '', 'Posledních dnů')); const ul = el('ul', 'log');
+    days.forEach(k => { const x = stats.days[k]; ul.appendChild(el('li', '', k + ': ' + x.chunks + ' úseků, ' + (x.words ? Math.round(100 * x.wordsOk / x.words) : 0) + ' % správně, ⭐ ' + x.stars)); }); b.appendChild(ul);
+  }
+}
+function openAbout() {
+  openModal('mAbout'); const b = $('aboutBody'); b.textContent = '';
+  b.appendChild(el('p', '', 'Čtení s kamarádem – verze ' + APP_VERSION));
+  b.appendChild(el('h3', '', 'Jak to používat'));
+  const tips = ['Dítě čte nahlas označený text, učitel poslouchá a hodnotí.', 'Při chybě učitel popíše, co bylo špatně, slovo vyslabikuje a nechá ho zopakovat.', 'Rozpoznávání řeči funguje nejlépe v Chrome nebo Edge a potřebuje internet a povolený mikrofon.', 'Dětskou řeč rozpoznávání občas nepochopí – tlačítko ✔ „Správně“ vždy přebije jeho rozhodnutí.', 'Nejspolehlivěji se mikrofon povoluje, když je stránka otevřená přes https:// (ne ze souboru v telefonu).', 'Bez rozpoznávání řeči zapněte v nastavení „Rodič rozhoduje“.', 'Český hlas učitele se bere ze systému; chybí-li, doinstalujte český hlas v nastavení telefonu/počítače.'];
+  const ul = el('ul', 'log'); tips.forEach(t => ul.appendChild(el('li', '', t))); b.appendChild(ul);
+  b.appendChild(el('h3', '', 'Historie změn'));
+  CHANGELOG.forEach(c => { b.appendChild(el('div', '', 'v' + c.v + ' · ' + c.date)); const u = el('ul', 'log'); c.items.forEach(t => u.appendChild(el('li', '', t))); b.appendChild(u); });
+}
+
+// ===== Nastavení: vazba prvků =====
+function bindSettings() {
+  document.querySelectorAll('[id^="s_"]').forEach(x => {
+    const key = x.id.slice(2); if (!(key in settings)) return;
+    if (x.type === 'checkbox') x.checked = !!settings[key]; else x.value = settings[key];
+    x.addEventListener('input', () => {
+      let v = x.type === 'checkbox' ? x.checked : x.value;
+      if (x.type === 'range' || x.hasAttribute('data-num')) v = parseFloat(v);
+      settings[key] = v; saveSettings();
+      if (key === 'fs') setFs(v);
+      if (key === 'rate') $('rateVal').textContent = v.toFixed(2) + '×';
+      if (['unit', 'sentences', 'syl'].includes(key) && S.chunk) { const p = S.chunk.start; goPos(p); }
+      if (key === 'manual') updateMic();
+      if (key === 'teacherTalks') refreshBanner();
+    });
+  });
+  $('rateVal').textContent = settings.rate.toFixed(2) + '×'; setFs(settings.fs);
+}
+
+// ===== Start =====
+$('btnMic').onclick = onMic; $('btnSkip').onclick = skip; $('btnPrev').onclick = prev; $('btnListen').onclick = listenBtn; $('btnOk').onclick = override;
+$('mOk').onclick = () => S.manualResolve && S.manualResolve('ok'); $('mAgain').onclick = () => S.manualResolve && S.manualResolve('again');
+$('btnAm').onclick = () => setFs(settings.fs - 6); $('btnAp').onclick = () => setFs(settings.fs + 6);
+$('btnTest').onclick = () => openTest(); $('btnTest2').onclick = () => openTest();
+$('btnLib').onclick = openLibrary; $('btnStats').onclick = openStats; $('btnSet').onclick = () => openModal('mSet'); $('btnAbout').onclick = openAbout;
+$('btnAddText').onclick = addText; $('newFile').onchange = onFile;
+$('btnResetStats').onclick = () => { if (confirm('Opravdu smazat všechny statistiky a těžká slova?')) { stats = { words: {}, days: {} }; saveStats(); updateStars(); toast('Statistiky smazány.'); } };
+$('pbar').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); jumpTo((e.clientX - r.left) / r.width); };
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = closeModals);
+document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) closeModals(); }));
+document.addEventListener('visibilitychange', () => { if (document.hidden && S.auto) pause(); });
+document.addEventListener('keydown', e => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || document.querySelector('.modal.open')) return;
+  if (e.key === ' ') { e.preventDefault(); onMic(); } else if (e.key === 'ArrowRight') skip(); else if (e.key === 'ArrowLeft') prev();
+});
+window.__cs = { S, settings, stats, evaluateChunk, syllabify, splitSentences, mkWord, openBook, BUILTIN, runChunk, goPos, sleep };
+
+bindSettings(); updateStars(); updateMic();
+(async function init() {
+  const last = LS.get('cs.last', null); let book = null;
+  if (last) { book = BUILTIN.find(b => b.id === last) || (await DB.all()).find(b => b.id === last); }
+  if (book) {
+    loadBook(book); const pr = progress[book.id]; goPos(pr && !pr.done ? Math.min(pr.pos || 0, S.total - 1) : 0);
+    teach('Klepni na 🎤 a čti nahlas. Já poslouchám.', 'idle');
+  } else openLibrary();
+  refreshBanner();
+  if ('serviceWorker' in navigator && ORIGIN_OK) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>

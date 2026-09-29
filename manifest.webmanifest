@@ -1,0 +1,16 @@
+{
+  "name": "Čtení s kamarádem",
+  "short_name": "Čtení",
+  "description": "Učitel, který poslouchá dítě při čtení nahlas a pomáhá mu.",
+  "lang": "cs",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#5b7cfa",
+  "theme_color": "#5b7cfa",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
